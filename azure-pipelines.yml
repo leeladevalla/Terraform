@@ -1,46 +1,28 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+name: Terraform CI/CD Pipeline
 
-provider "azurerm" {
-    version         =   ">=2.6"
-    client_id       =   var.client_id
-    client_secret   =   var.client_secret
-    subscription_id =   var.subscription_id
-    tenant_id       =   var.tenant_id
-    
-    features {}
-    
-resource "azurerm_resource_group" "rg" {
-    for_each              =   var.resource_group
-    name                  =   each.key
-    location              =   each.value
-    tags                  =   var.tags
-}
+on:
+  push:
+    branches:
+      - main # Change this to your main branch name
 
-#
-# - Create a Virtual Network
-#
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
 
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-resource "azurerm_virtual_network" "vnet" {
-  resource_group_name   =   azurerm_resource_group.rg["Dev-RG"].name
-  name                  =   var.virtual_network["name"]
-  location              =   azurerm_resource_group.rg["Dev-RG"].location
-  address_space         =   [var.virtual_network["address_range"]]
-  tags                  =   var.tags
-}
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.1.0 # Change this to your desired Terraform version
 
+    - name: Terraform Init
+      run: terraform init
 
-#
-# - Create multiple Subnets inside the virtual network
-#
+    - name: Terraform Plan
+      run: terraform plan -out=tfplan
 
-resource "azurerm_subnet" "sn" {
-   for_each             =   var.subnet
-   name                 =   each.key
-   resource_group_name  =   azurerm_resource_group.rg["Dev-RG"].name
-   virtual_network_name =   azurerm_virtual_network.vnet.name
-   address_prefixes     =   [each.value]
-}
+    - name: Terraform Apply
+      run: terraform apply -auto-approve tfplan
